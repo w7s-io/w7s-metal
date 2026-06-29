@@ -4,8 +4,6 @@ Instructions for agents working in this repository.
 
 ## Completion Rules
 
-- Always say `@guerrerocarlos` in every task-completion response.
-- Commit and push on every task completion.
 - Run `npm run check` before committing code changes.
 - If a change affects the Linux installer, also run `bash -n setup.sh`.
 
