@@ -137,7 +137,7 @@ export const handleDeployRequest = async ({ request, body, url, config, store }:
   }
 
   await writeDeploymentRecord(store, record);
-  const workerd = await writeWorkerdPlan(store, record);
+  const workerd = await writeWorkerdPlan(store, record, config);
 
   return {
     statusCode: 200,
@@ -163,7 +163,8 @@ export const handleDeployRequest = async ({ request, body, url, config, store }:
               ? {
                   entrypoint: record.workerEntrypoint,
                   runtime: "workerd",
-                  status: "planned"
+                  status: workerd.status,
+                  port: workerd.port
                 }
               : null
           },
@@ -175,10 +176,10 @@ export const handleDeployRequest = async ({ request, body, url, config, store }:
             secrets: record.manifest.secrets ?? []
           }
         },
-        deploymentWarnings: workerd.enabled
+        deploymentWarnings: workerd.status === "planned"
           ? [
               {
-                code: "workerd_runtime_planned",
+                code: "workerd_runtime_not_ready",
                 message: workerd.message
               }
             ]

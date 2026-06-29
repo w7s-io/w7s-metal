@@ -19,6 +19,9 @@ Environment:
   W7S_METAL_PORT          Bind port. Defaults to 8787.
   W7S_METAL_DEPLOY_TOKEN  Optional shared deploy token for the MVP endpoint.
   W7S_METAL_APP_PROTOCOL  App URL protocol, http or https. Defaults to https.
+  W7S_METAL_WORKERD_PATH  Optional path to workerd. Defaults to bundled npm binary.
+  W7S_METAL_WORKERD_HOST  workerd bind host. Defaults to 127.0.0.1.
+  W7S_METAL_WORKERD_PORT_BASE  Base port for per-deployment workerd processes. Defaults to 19000.
 `);
 };
 
@@ -36,6 +39,8 @@ const doctor = async () => {
     ["data dir", config.dataDir],
     ["base domain", config.baseDomain],
     ["listen", `${config.host}:${config.port}`],
+    ["workerd", config.workerdPath || "bundled npm binary"],
+    ["workerd listen", `${config.workerdHost}:${config.workerdPortBase}+`],
     ["deploy token", config.deployToken ? "configured" : "not configured"]
   ];
   for (const [name, value] of checks) {

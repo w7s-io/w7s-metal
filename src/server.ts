@@ -4,6 +4,7 @@ import { handleDeployRequest } from "./deploy.js";
 import { json, readBody, text } from "./http.js";
 import { serveStaticRoute, routeSummary } from "./router.js";
 import { createStore, type Store } from "./storage.js";
+import { stopWorkerdRuntimes } from "./workerd.js";
 
 const commitHash = process.env.W7S_METAL_COMMIT_HASH || "local";
 const branch = process.env.W7S_METAL_BRANCH || "local";
@@ -75,6 +76,7 @@ export const createMetalServer = async (config = loadConfig()): Promise<MetalSer
       });
     }
   });
+  server.once("close", stopWorkerdRuntimes);
 
   return { config, store, server };
 };

@@ -73,9 +73,10 @@ It supports:
 - branch URL routing with `https://<branch>--<owner>.<base-domain>/<repo>/`;
 - local metadata and static asset storage;
 - Worker/backend entrypoint detection;
-- a workerd runtime handoff plan written under the data directory.
+- JavaScript Worker execution through supervised workerd processes;
+- basic Worker text bindings for `W7S_OWNER`, `W7S_REPO`, `W7S_REPOSITORY`, `W7S_ENVIRONMENT`, and configured vars/secrets available in the `w7s-metal` service environment.
 
-It does not yet start workerd. Dynamic backend deployment is detected, stored, and planned, but request execution is the next milestone.
+TypeScript Worker entrypoints are accepted and stored, but they are not executed yet. Build backend code to JavaScript before deploying to the current runtime.
 
 ## Run Locally
 
@@ -146,6 +147,8 @@ curl -fsSL https://raw.githubusercontent.com/w7s-io/w7s-metal/main/setup.sh | \
 The script installs Node.js, Caddy, the `w7s-metal` service, a systemd unit, and a shared deploy token. It prints the token at the end so you can save it as `W7S_METAL_DEPLOY_TOKEN` in GitHub.
 
 The generated Caddy config serves the deploy endpoint over HTTPS at `deploy.example.com`. Wildcard app hosts are routed over HTTP in the MVP because automatic wildcard HTTPS requires a DNS challenge plugin or custom certificate setup.
+
+The setup installs the npm-bundled `workerd` binary as part of `npm ci`. JavaScript backend deployments such as `backend/index.js` or `worker/index.js` are started lazily on first request and proxied by the W7S Metal service.
 
 Optional settings:
 

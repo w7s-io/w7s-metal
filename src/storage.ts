@@ -131,3 +131,6 @@ export const writeWorkerBundle = async (
 
 export const staticFilePath = (store: Store, record: DeploymentRecord, requestPath: string) =>
   path.join(deploymentDir(store, record), "static", requestPath);
+
+export const deploymentPath = (store: Store, record: Pick<DeploymentRecord, "ownerSlug" | "repoSlug" | "environment">) =>
+  deploymentDir(store, record);

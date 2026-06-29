@@ -25,6 +25,8 @@ const startServer = async (overrides: Partial<MetalServer["config"]> = {}) => {
     host: "127.0.0.1",
     port: 0,
     appProtocol: "https",
+    workerdHost: "127.0.0.1",
+    workerdPortBase: 20000 + Math.floor(Math.random() * 10000),
     ...overrides
   });
   await new Promise<void>((resolve) => metal.server.listen(0, "127.0.0.1", resolve));
@@ -168,7 +170,7 @@ describe("w7s-metal server", () => {
     expect(response.status).toBe(401);
   });
 
-  it("writes a workerd handoff plan for Worker deployments", async () => {
+  it("runs JavaScript Worker deployments through workerd", async () => {
     const { origin, metal } = await startServer();
     const response = await fetch(`${origin}/api/v1/deploy`, {
       method: "POST",
@@ -180,22 +182,45 @@ describe("w7s-metal server", () => {
         "x-github-sha": "abc123"
       },
       body: zip({
-        "backend/index.ts": "export default { fetch: () => new Response('ok') };"
+        "backend/index.js": `
+          export default {
+            fetch(request, env) {
+              const url = new URL(request.url);
+              return Response.json({
+                ok: true,
+                pathname: url.pathname,
+                owner: env.W7S_OWNER,
+                repo: env.W7S_REPO,
+                environment: env.W7S_ENVIRONMENT
+              });
+            }
+          };
+        `
       })
     });
 
     expect(response.status).toBe(200);
     const payload = await response.json();
     expect(payload.data.deployment.targets.worker).toMatchObject({
-      entrypoint: "backend/index.ts",
+      entrypoint: "backend/index.js",
       runtime: "workerd",
-      status: "planned"
+      status: "ready"
     });
 
     const plan = await fs.readFile(
       path.join(metal.config.dataDir, "workerd", "acme", "api", "production", "workerd.plan.json"),
       "utf8"
     );
-    expect(plan).toContain("backend/index.ts");
+    expect(plan).toContain("backend/index.js");
+
+    const runtimeResponse = await getWithHost(origin, "/api/check?x=1", "acme.metal.test");
+    expect(runtimeResponse.status).toBe(200);
+    expect(JSON.parse(runtimeResponse.body)).toMatchObject({
+      ok: true,
+      pathname: "/check",
+      owner: "acme",
+      repo: "api",
+      environment: "production"
+    });
   });
 });

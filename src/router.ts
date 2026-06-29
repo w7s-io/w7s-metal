@@ -5,6 +5,7 @@ import { contentTypeFor, text } from "./http.js";
 import { hostForDeployment, sanitizePart } from "./names.js";
 import { listDeploymentRecords, readDeploymentRecord, staticFilePath, type DeploymentRecord, type Store } from "./storage.js";
 import type { MetalConfig } from "./config.js";
+import { ensureWorkerdRuntime } from "./workerd.js";
 
 const stripPort = (host: string) => host.replace(/:\d+$/, "").toLowerCase();
 
@@ -60,7 +61,6 @@ const resolveStaticAsset = async (store: Store, record: DeploymentRecord, assetP
     normalized || "index.html",
     normalized.endsWith("/") ? `${normalized}index.html` : `${normalized}/index.html`
   ];
-  if (!path.posix.extname(normalized)) candidates.push("index.html");
 
   for (const candidate of candidates) {
     const filePath = staticFilePath(store, record, candidate);
@@ -75,6 +75,56 @@ const resolveStaticAsset = async (store: Store, record: DeploymentRecord, assetP
   return null;
 };
 
+const proxyToWorkerd = async (params: {
+  request: IncomingMessage;
+  response: ServerResponse;
+  url: URL;
+  config: MetalConfig;
+  store: Store;
+  record: DeploymentRecord;
+  assetPath: string;
+}) => {
+  const origin = await ensureWorkerdRuntime({
+    store: params.store,
+    config: params.config,
+    record: params.record
+  });
+  const target = new URL(params.assetPath || "/", origin);
+  target.search = params.url.search;
+
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(params.request.headers)) {
+    if (!value || name.toLowerCase() === "host" || name.toLowerCase() === "connection") continue;
+    if (Array.isArray(value)) {
+      for (const entry of value) headers.append(name, entry);
+    } else {
+      headers.set(name, value);
+    }
+  }
+  headers.set("x-w7s-owner", params.record.ownerSlug);
+  headers.set("x-w7s-repo", params.record.repoSlug);
+  headers.set("x-w7s-repository", params.record.repository);
+  headers.set("x-w7s-environment", params.record.environment);
+
+  const method = params.request.method || "GET";
+  const body = method === "GET" || method === "HEAD" ? undefined : params.request;
+  const upstream = await fetch(target, {
+    method,
+    headers,
+    body,
+    // Node fetch requires this when streaming a Node request body.
+    duplex: body ? "half" : undefined
+  } as RequestInit & { duplex?: "half" });
+
+  params.response.writeHead(upstream.status, Object.fromEntries(upstream.headers.entries()));
+  if (method === "HEAD" || !upstream.body) {
+    params.response.end();
+    return;
+  }
+  const bytes = Buffer.from(await upstream.arrayBuffer());
+  params.response.end(bytes);
+};
+
 export const serveStaticRoute = async (params: {
   request: IncomingMessage;
   response: ServerResponse;
@@ -87,25 +137,50 @@ export const serveStaticRoute = async (params: {
     (await findLocalhostRecord(params.store, params.url.pathname));
 
   if (!match) return false;
-  if (!match.record.staticRoot) {
-    text(params.response, 501, "Dynamic workerd runtime is planned but not started by this MVP build.\n");
+  if (match.record.staticRoot) {
+    const asset = await resolveStaticAsset(params.store, match.record, decodeURIComponent(match.assetPath));
+    if (asset) {
+      const bytes = await fs.readFile(asset.filePath);
+      params.response.writeHead(200, {
+        "content-type": contentTypeFor(asset.pathname),
+        "cache-control": asset.pathname === "index.html" ? "no-cache" : "public, max-age=31536000, immutable",
+        "x-w7s-metal-repository": match.record.repository,
+        "x-w7s-metal-environment": match.record.environment
+      });
+      params.response.end(bytes);
+      return true;
+    }
+  }
+
+  if (match.record.workerEntrypoint) {
+    await proxyToWorkerd({
+      request: params.request,
+      response: params.response,
+      url: params.url,
+      config: params.config,
+      store: params.store,
+      record: match.record,
+      assetPath: decodeURIComponent(match.assetPath)
+    });
     return true;
   }
 
-  const asset = await resolveStaticAsset(params.store, match.record, decodeURIComponent(match.assetPath));
-  if (!asset) {
-    text(params.response, 404, "Not found.\n");
-    return true;
+  if (match.record.staticRoot) {
+    const fallback = await resolveStaticAsset(params.store, match.record, "/");
+    if (fallback) {
+      const bytes = await fs.readFile(fallback.filePath);
+      params.response.writeHead(200, {
+        "content-type": contentTypeFor(fallback.pathname),
+        "cache-control": "no-cache",
+        "x-w7s-metal-repository": match.record.repository,
+        "x-w7s-metal-environment": match.record.environment
+      });
+      params.response.end(bytes);
+      return true;
+    }
   }
 
-  const bytes = await fs.readFile(asset.filePath);
-  params.response.writeHead(200, {
-    "content-type": contentTypeFor(asset.pathname),
-    "cache-control": asset.pathname === "index.html" ? "no-cache" : "public, max-age=31536000, immutable",
-    "x-w7s-metal-repository": match.record.repository,
-    "x-w7s-metal-environment": match.record.environment
-  });
-  params.response.end(bytes);
+  text(params.response, 404, "Not found.\n");
   return true;
 };
 
