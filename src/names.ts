@@ -44,10 +44,10 @@ export const publicDeploymentUrl = (params: {
   ownerSlug: string;
   repoSlug: string;
   environment: string;
-  publicUrl?: string;
+  appProtocol?: "http" | "https";
 }) => {
   const host = hostForDeployment(params);
-  const protocol = params.publicUrl?.startsWith("http://") ? "http" : "https";
+  const protocol = params.appProtocol || "https";
   const path = params.repoSlug === params.ownerSlug ? "/" : `/${params.repoSlug}/`;
   return `${protocol}://${host}${path}`;
 };

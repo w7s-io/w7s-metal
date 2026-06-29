@@ -8,6 +8,7 @@ export type MetalConfig = {
   port: number;
   deployToken?: string;
   publicUrl?: string;
+  appProtocol: "http" | "https";
 };
 
 const defaultDataDir = () => path.join(os.homedir(), ".local", "share", "w7s-metal");
@@ -18,5 +19,6 @@ export const loadConfig = (): MetalConfig => ({
   host: process.env.W7S_METAL_HOST?.trim() || "0.0.0.0",
   port: Number.parseInt(process.env.W7S_METAL_PORT || "8787", 10),
   deployToken: process.env.W7S_METAL_DEPLOY_TOKEN?.trim() || undefined,
-  publicUrl: process.env.W7S_METAL_PUBLIC_URL?.trim() || undefined
+  publicUrl: process.env.W7S_METAL_PUBLIC_URL?.trim() || undefined,
+  appProtocol: process.env.W7S_METAL_APP_PROTOCOL === "http" ? "http" : "https"
 });

@@ -18,6 +18,7 @@ Environment:
   W7S_METAL_HOST          Bind host. Defaults to 0.0.0.0.
   W7S_METAL_PORT          Bind port. Defaults to 8787.
   W7S_METAL_DEPLOY_TOKEN  Optional shared deploy token for the MVP endpoint.
+  W7S_METAL_APP_PROTOCOL  App URL protocol, http or https. Defaults to https.
 `);
 };
 

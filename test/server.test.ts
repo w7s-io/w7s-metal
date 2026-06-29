@@ -24,6 +24,7 @@ const startServer = async (overrides: Partial<MetalServer["config"]> = {}) => {
     dataDir,
     host: "127.0.0.1",
     port: 0,
+    appProtocol: "https",
     ...overrides
   });
   await new Promise<void>((resolve) => metal.server.listen(0, "127.0.0.1", resolve));

@@ -86,7 +86,7 @@ npm run build
 W7S_METAL_BASE_DOMAIN=example.com \
 W7S_METAL_DEPLOY_TOKEN=replace-me \
 W7S_METAL_PORT=8787 \
-node dist/cli.js serve
+node dist/src/cli.js serve
 ```
 
 Health:
@@ -125,6 +125,45 @@ For local testing without DNS, deploy to `localhost` and request a route with a 
 
 ```sh
 curl -H 'Host: owner.example.com' http://localhost:8787/repo/
+```
+
+## One-Command VPS Setup
+
+On a fresh Ubuntu/Debian VPS, point DNS first:
+
+```text
+deploy.example.com   A/AAAA -> VPS IP
+*.example.com        A/AAAA -> VPS IP
+```
+
+Then run:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/w7s-io/w7s-metal/main/setup.sh | \
+  sudo W7S_METAL_BASE_DOMAIN=example.com bash
+```
+
+The script installs Node.js, Caddy, the `w7s-metal` service, a systemd unit, and a shared deploy token. It prints the token at the end so you can save it as `W7S_METAL_DEPLOY_TOKEN` in GitHub.
+
+The generated Caddy config serves the deploy endpoint over HTTPS at `deploy.example.com`. Wildcard app hosts are routed over HTTP in the MVP because automatic wildcard HTTPS requires a DNS challenge plugin or custom certificate setup.
+
+Optional settings:
+
+```sh
+sudo W7S_METAL_BASE_DOMAIN=example.com \
+  W7S_METAL_DEPLOY_HOST=deploy.example.com \
+  W7S_METAL_ACME_EMAIL=admin@example.com \
+  W7S_METAL_DEPLOY_TOKEN=choose-a-secret \
+  bash setup.sh
+```
+
+After setup, app repos can keep using the same action:
+
+```yaml
+- uses: w7s-io/w7s-cloud@v1
+  with:
+    deploy-url: https://deploy.example.com/api/v1/deploy
+    token: ${{ secrets.W7S_METAL_DEPLOY_TOKEN }}
 ```
 
 ## Repository Scope

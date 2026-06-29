@@ -29,7 +29,8 @@ export const createMetalServer = async (config = loadConfig()): Promise<MetalSer
           branch,
           commitHash,
           deployedAt,
-          baseDomain: config.baseDomain
+          baseDomain: config.baseDomain,
+          appProtocol: config.appProtocol
         });
         return;
       }

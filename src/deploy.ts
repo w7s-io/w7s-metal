@@ -120,7 +120,7 @@ export const handleDeployRequest = async ({ request, body, url, config, store }:
       ownerSlug: repository.ownerSlug,
       repoSlug: repository.repoSlug,
       environment,
-      publicUrl: config.publicUrl
+      appProtocol: config.appProtocol
     }),
     staticRoot,
     staticFileCount: 0,
