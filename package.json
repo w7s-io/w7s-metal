@@ -1,0 +1,27 @@
+{
+  "name": "@w7s-io/w7s-metal",
+  "version": "0.1.0",
+  "description": "Self-host W7S Cloud on a Linux machine.",
+  "type": "module",
+  "bin": {
+    "w7s-metal": "./dist/src/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "check": "npm run build && npm test",
+    "dev": "tsx src/cli.ts serve",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "fflate": "^0.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.4",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

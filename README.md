@@ -58,6 +58,75 @@ The initial success case:
 6. Deploy a branch and open `https://feature-x--owner.example.com/repo/`.
 7. See `/health`, logs, and usage state for the deployed app.
 
+## Current MVP
+
+This repo now contains the first executable W7S Metal service.
+
+It supports:
+
+- `GET /health` and `GET /api/v1/health`;
+- `POST /api/v1/deploy` using the same request shape sent by `w7s-io/w7s-cloud@v1`;
+- optional shared deploy-token enforcement through `W7S_METAL_DEPLOY_TOKEN`;
+- zip archive ingestion;
+- static frontend detection from `dist/client`, `frontend/dist`, `dist`, `build`, `out`, or `public`;
+- production URL routing with `https://<owner>.<base-domain>/<repo>/`;
+- branch URL routing with `https://<branch>--<owner>.<base-domain>/<repo>/`;
+- local metadata and static asset storage;
+- Worker/backend entrypoint detection;
+- a workerd runtime handoff plan written under the data directory.
+
+It does not yet start workerd. Dynamic backend deployment is detected, stored, and planned, but request execution is the next milestone.
+
+## Run Locally
+
+```sh
+npm install
+npm run build
+
+W7S_METAL_BASE_DOMAIN=example.com \
+W7S_METAL_DEPLOY_TOKEN=replace-me \
+W7S_METAL_PORT=8787 \
+node dist/cli.js serve
+```
+
+Health:
+
+```sh
+curl http://localhost:8787/health
+```
+
+Deploy from an app repo with the existing W7S action:
+
+```yaml
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: w7s-io/w7s-cloud@v1
+        with:
+          deploy-url: https://deploy.example.com/api/v1/deploy
+          token: ${{ secrets.W7S_METAL_DEPLOY_TOKEN }}
+```
+
+The `token` input is optional if the metal endpoint is run without `W7S_METAL_DEPLOY_TOKEN`, but production installs should configure the shared deploy token until GitHub OIDC verification lands.
+
+For local testing without DNS, deploy to `localhost` and request a route with a `Host` header:
+
+```sh
+curl -H 'Host: owner.example.com' http://localhost:8787/repo/
+```
+
 ## Repository Scope
 
 This repo should own:
